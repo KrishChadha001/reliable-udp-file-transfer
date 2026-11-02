@@ -1,0 +1,21 @@
+{
+  "protocol": "udp",
+  "role": "receiver",
+  "filename": "data.bin",
+  "success": true,
+  "bytes": 32768,
+  "packets": 32,
+  "retransmissions": 7,
+  "retransmission_pct": 21.875,
+  "elapsed_s": 1.4922138000001723,
+  "goodput_mbps": 0.17567455816315983,
+  "sha256": "6d72a7db08643b79d602f61128104d3ebf47613bf9b002ab257a20f4f512ebfc",
+  "corrupt_packets": 1,
+  "duplicates": 4,
+  "max_buffered": 30,
+  "congestion_events": 1,
+  "cwnd": 5.567637253876825,
+  "srtt_ms": 0.5048082885059463,
+  "rto_ms": 800.0,
+  "error": ""
+}

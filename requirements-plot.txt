@@ -1,0 +1,2 @@
+# Optional only: python3 -m pip install -r requirements-plot.txt
+matplotlib>=3.5

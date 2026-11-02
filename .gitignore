@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+.ruff_cache/
+samples/
+results/
+*.part.*
+received-*
+*.log
+example-results/**/fixtures/
+example-results/**/received.bin

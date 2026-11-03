@@ -7,6 +7,71 @@ Team: **Vaibhav Khandelwal (992401030121), Vedika Uthra (992401030210), Krish Ch
 
 This project transfers actual files through UDP sockets. Reliability, ordering, duplicate handling, individual acknowledgements, per-packet retransmission timers and simplified congestion control are implemented in the application. It also includes a separate TCP baseline, an Ubuntu NetEm lab, automated experiments, CSV/JSON measurements and SVG graphs. The interface is a terminal dashboard, with an optional guided menu. Qt is deferred. The final language is Python, matching the synopsis.
 
+## Project status and demonstrated results
+
+**The core implementation and local demonstrations are ready. Ubuntu VM NetEm validation is the remaining step before final submission.** The Linux experiment tools and instructions are included; the results below were collected on Windows localhost and must not be described as Ubuntu NetEm results.
+
+| Check | Verified result |
+|---|---|
+| Automated tests | 33 tests: 32 passed, 1 Windows symlink-permission skip |
+| Actual UDP/TCP transfer | Binary and empty files verified with SHA-256 |
+| Fault recovery | Lost DATA/ACK/META/FIN, corruption, duplicates and reordering; four final ACKs lost |
+| Persistent sender | Repeated files and recovery after malformed requests |
+| 1/10/50 MB comparison | 30 successful measured transfers, five per protocol and file size |
+| Ubuntu NetEm study | Tools ready; execution and measured VM results still pending |
+
+The output images below are rendered from actual captured command output for readability, rather than invented terminal results. Graphs use the included measured CSV/trace data.
+
+### Automated test output
+
+![Actual test output: 33 tests, 32 passed and one platform skip](docs/images/test-output.png)
+
+[Raw captured test output](docs/evidence/test-output.txt) · [Validation details](docs/VALIDATION.md)
+
+### Verified UDP transfer
+
+![Actual UDP receiver output with verified file hash](docs/images/udp-transfer.png)
+
+[Raw captured UDP output](docs/evidence/udp-transfer.txt)
+
+<details>
+<summary>Show the TCP baseline transfer output</summary>
+
+![Actual TCP receiver output with verified file hash](docs/images/tcp-transfer.png)
+
+[Raw captured TCP output](docs/evidence/tcp-transfer.txt)
+
+</details>
+
+### Recovery under deliberately injected faults
+
+![Recorded UDP recovery result with retransmissions and matching SHA-256](docs/images/fault-recovery.png)
+
+This diagnostic uses real sockets and a deterministic fault proxy, **not NetEm**. [Raw receiver metrics](example-results/fault-demo/receiver.json) and [injected events](example-results/fault-demo/fault-events.json) are included.
+
+### Measured comparison across all three file sizes
+
+![Measured UDP and TCP useful throughput for 1, 10 and 50 MB on Windows localhost](docs/images/throughput.png)
+
+![Measured UDP and TCP completion times for 1, 10 and 50 MB on Windows localhost](docs/images/completion-time.png)
+
+Five repetitions per protocol and size; all 30 transfers succeeded. These are successful-run means on a virtual localhost path, not physical-link capacity measurements. [Raw runs](example-results/size-study/runs.csv) · [Summary statistics](example-results/size-study/analysis/summary.csv)
+
+<details>
+<summary>Show retransmission measurements for the clean local comparison</summary>
+
+![UDP retransmission means, with TCP counters explicitly unavailable](docs/images/retransmissions.png)
+
+The clean localhost size study observed zero UDP DATA retransmissions. TCP retransmissions are not measured by this application and remain N/A. The fault-recovery example above demonstrates retransmission behavior.
+
+</details>
+
+### Actual congestion-window trace
+
+![Measured AIMD congestion window with timeout events during the deterministic fault test](docs/images/congestion-window.png)
+
+[Raw sender trace](example-results/fault-demo/sender-trace.csv). This diagnostic trace is separate from the primary timing comparison, which disables packet-level logging.
+
 ## Start here on Ubuntu
 
 Copy/extract this folder into your Ubuntu VM and open a terminal **inside this folder**. Ubuntu 22.04 or later with Python 3.10+ is recommended.

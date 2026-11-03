@@ -20,6 +20,7 @@ from .common import (
     validate_request,
     validate_meta,
     validate_final,
+    error_control,
 )
 from .congestion import Aimd, Rtt
 from .protocol import (
@@ -52,9 +53,7 @@ def receive_packet(sock, wait, metrics):
 
 
 def error_packet(request_id, message):
-    return Packet(
-        Kind.ERROR, 0, control({"request": request_id, "error": str(message)[:250]})
-    )
+    return Packet(Kind.ERROR, 0, control(error_control(request_id, message)))
 
 
 def exchange(sock, peer, packet, ack_seq, session, cfg, metrics, ui):
@@ -249,7 +248,10 @@ def serve(cfg: Config, ui: Progress):
                     send_file(transfer, peer, source, meta, cfg, metrics, ui)
             except (OSError, ValueError) as exc:
                 metrics.error = str(exc)
-                send_packet(listener, peer, error_packet(request.get("id"), exc))
+                try:
+                    send_packet(listener, peer, error_packet(request.get("id"), exc))
+                except OSError:
+                    pass  # A disconnected requester must not stop the service.
             finally:
                 metrics.finish(started)
                 metrics.save(cfg.metrics)

@@ -75,6 +75,19 @@ These are measured local sanity-check results, **not Ubuntu VM/NetEm findings**,
 
 ## 8. Ubuntu evaluation worksheet — complete after running
 
+An additional local size study covers all three planned file sizes. Like the initial baseline, it ran on Windows localhost without NetEm; its raw evidence is under `example-results/size-study`. All 30 transfers succeeded, with five repetitions per protocol and size.
+
+| File size | Protocol | Successes / runs | Mean time (s) | Mean goodput (Mbit/s) |
+|---|---|---:|---:|---:|
+| 1 MB | UDP | 5 / 5 | 0.068770 | 126.556 |
+| 1 MB | TCP | 5 / 5 | 0.020468 | 414.945 |
+| 10 MB | UDP | 5 / 5 | 0.444299 | 181.166 |
+| 10 MB | TCP | 5 / 5 | 0.060327 | 1390.906 |
+| 50 MB | UDP | 5 / 5 | 3.018778 | 137.490 |
+| 50 MB | TCP | 5 / 5 | 0.232288 | 1752.354 |
+
+These goodputs describe the virtual localhost path and processing overhead, not a physical network link. There were zero observed UDP DATA retransmissions in this size-study dataset; loss behavior is demonstrated separately by the fault test and must be measured under NetEm in the VM.
+
 Record Ubuntu version, kernel, VM CPU/RAM, Python version, interface topology, iproute2 version, requested/effective impairment, window/cwnd, fixture hash, repetitions and logging/capture policy. Copy actual values from `summary.csv`; include failure counts and dispersion.
 
 | Condition | File | Protocol | Successes / runs | Mean time | Stddev | Mean goodput | UDP retransmissions |

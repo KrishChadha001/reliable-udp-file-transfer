@@ -114,7 +114,7 @@ class Transfers(unittest.TestCase):
             p.communicate(timeout=5)
         self.tmp.cleanup()
 
-    def server(self, proto="udp", **kw):
+    def server(self, proto="udp", once=True, **kw):
         pnum = port()
         cmd = [
             *RUN,
@@ -125,9 +125,10 @@ class Transfers(unittest.TestCase):
             str(self.share),
             "--port",
             str(pnum),
-            "--once",
             "--plain",
         ]
+        if once:
+            cmd.append("--once")
         for k, v in kw.items():
             cmd.extend(["--" + k, str(v)])
         p = subprocess.Popen(
@@ -340,6 +341,47 @@ class Transfers(unittest.TestCase):
         r = self.get(pnum, proto="tcp")
         self.assertNotEqual(r.returncode, 0)
         self.assertFalse((self.root / "received.bin").exists())
+
+    def test_sender_survives_oversized_invalid_request_id(self):
+        from rudp.protocol import Packet, Kind
+
+        (self.share / "data.bin").write_bytes(b"valid after invalid")
+        for proto in ("udp", "tcp"):
+            with self.subTest(protocol=proto):
+                srv, pnum = self.server(proto, once=False)
+                raw = json.dumps({"id": "x" * 1000}).encode()
+                if proto == "udp":
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as bad:
+                        bad.settimeout(2)
+                        bad.sendto(
+                            Packet(Kind.REQUEST, 0, raw).encode(), ("127.0.0.1", pnum)
+                        )
+                        bad.recvfrom(65535)
+                else:
+                    with socket.create_connection(
+                        ("127.0.0.1", pnum), timeout=2
+                    ) as bad:
+                        bad.sendall(struct.pack("!I", len(raw)) + raw)
+                        self.assertTrue(bad.recv(4096))
+                result = self.get(
+                    pnum, proto=proto, out=self.root / f"after-bad-{proto}.bin"
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIsNone(srv.poll(), "Invalid request terminated the sender")
+
+    def test_multiple_files_on_same_sender(self):
+        (self.share / "data.bin").write_bytes(bytes(range(256)) * 4)
+        for proto in ("udp", "tcp"):
+            with self.subTest(protocol=proto):
+                srv, pnum = self.server(proto, once=False)
+                for i in range(3):
+                    dest = self.root / f"repeat-{proto}-{i}.bin"
+                    result = self.get(pnum, proto=proto, out=dest)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(
+                        dest.read_bytes(), (self.share / "data.bin").read_bytes()
+                    )
+                self.assertIsNone(srv.poll())
 
     def test_inspect(self):
         f = self.root / "abc"

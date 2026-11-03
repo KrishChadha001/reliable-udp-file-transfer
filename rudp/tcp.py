@@ -16,6 +16,7 @@ from .common import (
     validate_request,
     validate_meta,
     packet_count,
+    error_control,
 )
 from .protocol import CHUNK, ProtocolError
 
@@ -92,9 +93,7 @@ def serve(cfg, ui):
                 except (OSError, ValueError) as exc:
                     m.error = str(exc)
                     try:
-                        send_control(
-                            conn, dict(request=request.get("id"), error=str(exc)[:250])
-                        )
+                        send_control(conn, error_control(request.get("id"), exc))
                     except OSError:
                         pass
                 finally:

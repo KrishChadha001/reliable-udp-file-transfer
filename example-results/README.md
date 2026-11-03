@@ -4,6 +4,7 @@ These files are real measurements from the development host (Windows 11, Python 
 
 - `local-five/`: ten real 1,000,000-byte transfers, five per protocol, no intentional network impairment, primary packet traces disabled. Includes the raw CSV, environment manifest and comparison SVGs. All ten succeeded. Detailed per-run logs/JSON and duplicate PNGs were removed from the source repository; the runner creates them again for new experiments.
 - `fault-demo/`: one real UDP transfer through the deterministic test proxy. It drops/corrupts/reorders/duplicates traffic and drops the first four final ACKs. Both processes succeeded, with 7 DATA retransmissions, 1 grouped congestion event, 1 corrupt received packet and 4 duplicates observed. Includes fault events, raw sender cwnd CSV and an actual congestion-window SVG.
+- `size-study/`: 30 additional real transfers covering 1/10/50 MB, five repetitions per protocol/size, with no intentional impairment and packet-level traces disabled. Every transfer succeeded. The compact CSV, manifest, aggregate tables and SVG graphs cover all three planned file sizes locally.
 
 The fault demo is a correctness diagnostic, not a controlled NetEm throughput comparison. Its trace overhead and deliberate event pattern make it unsuitable for ranking protocols. The fault trace is generated using the same real-socket proxy exercised by the integration tests.
 

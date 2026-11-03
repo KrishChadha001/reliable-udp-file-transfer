@@ -114,6 +114,15 @@ def valid_token(value) -> bool:
     )
 
 
+def error_control(request_id, message) -> dict:
+    """An invalid request must never make its error reply exceed the wire cap."""
+    safe_id = request_id if valid_token(request_id) else None
+    # Escape before truncating: JSON can expand a non-ASCII codepoint to 12
+    # bytes, so a character-count limit on the original string is insufficient.
+    safe_message = str(message)[:250].encode("unicode_escape").decode("ascii")[:250]
+    return {"request": safe_id, "error": safe_message}
+
+
 def packet_count(size: int) -> int:
     return (size + CHUNK - 1) // CHUNK
 

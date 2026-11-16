@@ -12,12 +12,16 @@ FIN_ACK = 0xFFFFFFFF
 
 
 class Kind(IntEnum):
+    """Packet kinds used by the transfer state machines."""
+
     REQUEST = 1
     META = 2
     DATA = 3
     ACK = 4
     FIN = 5
     ERROR = 6
+    META_ACK = 7
+    FIN_ACK = 8
 
 
 class ProtocolError(ValueError):
@@ -31,6 +35,7 @@ class Packet:
     payload: bytes = b""
 
     def encode(self) -> bytes:
+        """Build a datagram and calculate CRC-32 with its checksum field zeroed."""
         if len(self.payload) > CHUNK or not 0 <= self.seq <= 0xFFFFFFFF:
             raise ProtocolError("Packet size or sequence is outside the wire limits")
         try:
@@ -43,6 +48,7 @@ class Packet:
 
     @classmethod
     def decode(cls, wire: bytes):
+        """Validate length, packet type, and CRC-32 before exposing a datagram."""
         if not HEADER.size <= len(wire) <= HEADER.size + CHUNK:
             raise ProtocolError("Truncated or oversized datagram")
         kind, seq, length, checksum = HEADER.unpack_from(wire)
@@ -58,7 +64,10 @@ class Packet:
 
 
 class ReceiveWindow:
+    """Buffer packets inside a Selective Repeat window until they are contiguous."""
+
     def __init__(self, window: int, packets: int, file_size: int):
+        """Create a window whose packet lengths are checked against file metadata."""
         self.window = window
         self.packets = packets
         self.file_size = file_size
@@ -66,6 +75,7 @@ class ReceiveWindow:
         self.buffer: dict[int, bytes] = {}
 
     def accept(self, seq: int, payload: bytes) -> tuple[bool, list[bytes]]:
+        """Accept in-window data, re-ACK old data, and deliver contiguous chunks."""
         if not 0 <= seq < self.packets:
             return False, []
         expected = min(CHUNK, self.file_size - seq * CHUNK)

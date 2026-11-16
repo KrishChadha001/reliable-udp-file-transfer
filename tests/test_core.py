@@ -6,9 +6,18 @@ import zlib
 from rudp.protocol import Packet, Kind, ProtocolError, ReceiveWindow
 from rudp.congestion import Rtt, Aimd
 from rudp.common import validate_final, error_control, control, parse_control
+from rudp.models import Event, Settings, Stats
 
 
 class CodecTests(unittest.TestCase):
+    def test_transfer_models_have_simple_defaults(self):
+        settings = Settings()
+        stats = Stats()
+        event = Event("SEND", 3, "data")
+        self.assertEqual(settings.window, 32)
+        self.assertEqual(stats.rto_ms, 500.0)
+        self.assertEqual((event.kind, event.seq, event.info), ("SEND", 3, "data"))
+
     def test_error_replies_stay_bounded_for_untrusted_ids_and_unicode(self):
         for request_id in ("x" * 1000, {"nested": "x" * 900}, "a" * 32):
             reply = parse_control(

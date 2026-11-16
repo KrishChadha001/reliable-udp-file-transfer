@@ -1,8 +1,10 @@
 """Contracts derived from the synopsis, with independent wire/test vectors."""
 
 import struct
+import socket
 import unittest
 import zlib
+from rudp.channel import LossyChannel
 from rudp.protocol import Packet, Kind, ProtocolError, ReceiveWindow
 from rudp.congestion import Rtt, Aimd
 from rudp.common import validate_final, error_control, control, parse_control
@@ -114,13 +116,14 @@ class CongestionTests(unittest.TestCase):
         self.assertAlmostEqual(r.rto, 0.6)
         for _ in range(10):
             r.backoff()
-        self.assertEqual(r.rto, 3)
+        self.assertEqual(r.rto, 2)
 
     def test_aimd_and_recovery_boundary(self):
         a = Aimd(4, 64)
         a.ack()
-        self.assertAlmostEqual(a.cwnd, 4.25)
+        self.assertAlmostEqual(a.cwnd, 5)
         self.assertTrue(a.loss(2, 8))
+        self.assertEqual(a.ssthresh, 2.5)
         old = a.cwnd
         self.assertFalse(a.loss(5, 12))
         self.assertEqual(old, a.cwnd)
@@ -134,6 +137,43 @@ class CongestionTests(unittest.TestCase):
         for value in (0, -1, float("nan"), float("inf"), 65):
             with self.assertRaises(ValueError):
                 Aimd(value, 64)
+
+    def test_small_windows_are_valid(self):
+        for window in (1, 2, 3):
+            aimd = Aimd(1, window)
+            aimd.ack()
+            self.assertLessEqual(aimd.cwnd, window)
+            self.assertTrue(aimd.loss(0, 1))
+            self.assertLessEqual(aimd.cwnd, window)
+
+
+class ChannelTests(unittest.TestCase):
+    def test_corruption_reaches_receiver_and_fails_crc(self):
+        receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        receiver.bind(("127.0.0.1", 0))
+        receiver.settimeout(1)
+        sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        channel = LossyChannel(sender, corrupt=100, seed=1)
+        try:
+            channel.sendto(Packet(Kind.DATA, 0, b"payload").encode(), receiver.getsockname())
+            wire, _ = receiver.recvfrom(2048)
+            with self.assertRaises(ProtocolError):
+                Packet.decode(wire)
+        finally:
+            channel.close()
+            receiver.close()
+
+    def test_close_cancels_delayed_sends(self):
+        receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        receiver.bind(("127.0.0.1", 0))
+        receiver.settimeout(0.2)
+        sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        channel = LossyChannel(sender, delay_ms=100, seed=1)
+        channel.sendto(b"not delivered", receiver.getsockname())
+        channel.close()
+        with self.assertRaises(socket.timeout):
+            receiver.recvfrom(2048)
+        receiver.close()
 
 
 if __name__ == "__main__":

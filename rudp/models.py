@@ -1,6 +1,6 @@
 """Small data objects shared by the sender, receiver, CLI, and GUI."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 

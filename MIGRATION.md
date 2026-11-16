@@ -11,7 +11,7 @@ This file records replacements before legacy code is removed.
 | `rudp.congestion.Aimd` | `rudp.congestion.Aimd` | Simplified to required slow start/AIMD rules |
 | `rudp.common` control/security helpers | `rudp.sender`, `rudp.receiver`, `rudp.models` | Pending removal after compatibility tests |
 | `rudp.cli` | `rudp.__main__` send/recv commands | Removed; replacement CLI coverage passes |
-| `rudp.ui` | `app.py` | GUI replacement implemented; old terminal UI retained temporarily |
+| `rudp.ui` | `app.py` | Removed; GUI replacement and transfer tests pass |
 | `FaultProxy` in integration tests | `rudp.channel.LossyChannel` | New real-socket fault tests added; old fixture retained temporarily |
 
 ## Planned removals

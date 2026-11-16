@@ -10,7 +10,7 @@ This file records replacements before legacy code is removed.
 | `rudp.tcp` comparison transport | none; TCP is outside this project scope | Removed because the target is a UDP teaching project |
 | `rudp.congestion.Rtt` | `rudp.congestion.Rtt` | Simplified to required estimator and bounds |
 | `rudp.congestion.Aimd` | `rudp.congestion.Aimd` | Simplified to required slow start/AIMD rules |
-| `rudp.common` control/security helpers | `rudp.sender`, `rudp.receiver`, `rudp.models` | Pending removal after compatibility tests |
+| `rudp.common` control/security helpers | `rudp.sender`, `rudp.receiver`, `rudp.models` | Removed; old request/security features are out of scope |
 | `rudp.cli` | `rudp.__main__` send/recv commands | Removed; replacement CLI coverage passes |
 | `rudp.ui` | `app.py` | Removed; GUI replacement and transfer tests pass |
 | `FaultProxy` in integration tests | `rudp.channel.LossyChannel` | New real-socket fault tests added; old fixture retained temporarily |

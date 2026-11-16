@@ -23,16 +23,20 @@ def _emit(callback: EventCallback, event: Event) -> None:
         callback(event)
 
 
-def _receive(sock: socket.socket, wait: float) -> tuple[Optional[Packet], object]:
+def _receive(
+    sock: socket.socket, wait: float, stats: Optional[Stats] = None
+) -> tuple[Optional[Packet], object]:
     """Decode one datagram and report malformed packets as absent."""
     sock.settimeout(max(0.001, wait))
     try:
         raw, peer = sock.recvfrom(65535)
-    except socket.timeout:
+    except (socket.timeout, ConnectionResetError):
         return None, None
     try:
         return Packet.decode(raw), peer
     except ProtocolError:
+        if stats is not None:
+            stats.corrupt_dropped += 1
         return None, peer
 
 
@@ -124,7 +128,7 @@ def receive_file(
         while metadata is None:
             if stop.is_set():
                 raise RuntimeError("Receive cancelled")
-            packet, source = _receive(sock, 0.2)
+            packet, source = _receive(sock, 0.2, stats)
             if packet is None:
                 if time.monotonic() - last_progress > settings.timeouts:
                     raise TimeoutError("No META packet received within inactivity timeout")
@@ -153,7 +157,7 @@ def receive_file(
             while True:
                 if stop.is_set():
                     raise RuntimeError("Receive cancelled")
-                packet, source = _receive(sock, 0.2)
+                packet, source = _receive(sock, 0.2, stats)
                 now = time.monotonic()
                 if source != peer or packet is None:
                     if now - last_progress > settings.timeouts:

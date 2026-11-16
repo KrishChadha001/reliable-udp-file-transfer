@@ -7,7 +7,6 @@ import zlib
 from rudp.channel import LossyChannel
 from rudp.protocol import Packet, Kind, ProtocolError, ReceiveWindow
 from rudp.congestion import Rtt, Aimd
-from rudp.common import validate_final, error_control, control, parse_control
 from rudp.models import Event, Settings, Stats
 
 
@@ -19,19 +18,6 @@ class CodecTests(unittest.TestCase):
         self.assertEqual(settings.window, 32)
         self.assertEqual(stats.rto_ms, 500.0)
         self.assertEqual((event.kind, event.seq, event.info), ("SEND", 3, "data"))
-
-    def test_error_replies_stay_bounded_for_untrusted_ids_and_unicode(self):
-        for request_id in ("x" * 1000, {"nested": "x" * 900}, "a" * 32):
-            reply = parse_control(
-                control(error_control(request_id, "\U0001f4c1" * 500))
-            )
-            self.assertLessEqual(len(control(reply)), 1024)
-            self.assertEqual(
-                reply["request"], "a" * 32 if request_id == "a" * 32 else None
-            )
-            self.assertTrue(reply["error"])
-        for message in ("\x01" * 250, '\\"\n' * 250):
-            self.assertLessEqual(len(control(error_control(None, message))), 1024)
 
     def test_header_and_roundtrip(self):
         p = Packet(Kind.DATA, 0x01020304, b"\x00\xff*")
@@ -81,29 +67,6 @@ class WindowTests(unittest.TestCase):
 
 
 class CongestionTests(unittest.TestCase):
-    def test_malformed_fin_statistics_are_rejected(self):
-        valid = dict(
-            id="a" * 32,
-            bytes=4,
-            packets=1,
-            retransmissions=0,
-            congestion_events=0,
-            cwnd=4,
-            srtt_ms=1,
-            rto_ms=100,
-        )
-        validate_final(valid, "a" * 32, 4, 1)
-        for key, value in [
-            ("retransmissions", -1),
-            ("cwnd", float("nan")),
-            ("srtt_ms", "bad"),
-            ("bytes", 5),
-            ("id", "old"),
-        ]:
-            bad = {**valid, key: value}
-            with self.assertRaises(ValueError):
-                validate_final(bad, "a" * 32, 4, 1)
-
     def test_rtt_and_karn(self):
         r = Rtt()
         self.assertEqual(r.rto, 0.5)

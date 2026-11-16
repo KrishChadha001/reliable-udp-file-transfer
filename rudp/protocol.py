@@ -7,21 +7,17 @@ import zlib
 
 CHUNK = 1024
 HEADER = struct.Struct("!BIHI")  # 1 + 4 + 2 + 4 = 11 bytes; network byte order
-META_ACK = 0xFFFFFFFE
-FIN_ACK = 0xFFFFFFFF
 
 
 class Kind(IntEnum):
     """Packet kinds used by the transfer state machines."""
 
-    REQUEST = 1
-    META = 2
+    META = 1
+    META_ACK = 2
     DATA = 3
     ACK = 4
     FIN = 5
-    ERROR = 6
-    META_ACK = 7
-    FIN_ACK = 8
+    FIN_ACK = 6
 
 
 class ProtocolError(ValueError):

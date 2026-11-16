@@ -40,16 +40,20 @@ def _packet_count(size: int) -> int:
     return (size + CHUNK - 1) // CHUNK
 
 
-def _receive(sock: socket.socket, wait: float) -> tuple[Optional[Packet], object]:
+def _receive(
+    sock: socket.socket, wait: float, stats: Optional[Stats] = None
+) -> tuple[Optional[Packet], object]:
     """Read one datagram and discard malformed CRC or length data."""
     sock.settimeout(max(0.001, wait))
     try:
         raw, peer = sock.recvfrom(65535)
-    except socket.timeout:
+    except (socket.timeout, ConnectionResetError):
         return None, None
     try:
         return Packet.decode(raw), peer
     except ProtocolError:
+        if stats is not None:
+            stats.corrupt_dropped += 1
         return None, peer
 
 
@@ -207,7 +211,9 @@ def _send_data(
             (flight.deadline for flight in outstanding.values()),
             default=time.monotonic() + 0.02,
         )
-        packet, source = _receive(sock, min(0.05, max(0.001, closest - time.monotonic())))
+        packet, source = _receive(
+            sock, min(0.05, max(0.001, closest - time.monotonic())), stats
+        )
         if source == peer and packet is not None and packet.kind == Kind.ACK:
             flight = outstanding.pop(packet.seq, None)
             if flight is not None:

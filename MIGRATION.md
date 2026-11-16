@@ -1,0 +1,22 @@
+# Migration record
+
+This file records replacements before legacy code is removed.
+
+| Old location/function | New location | Status |
+|---|---|---|
+| `rudp.protocol.Packet` | `rudp.protocol.Packet` | Kept; header/CRC remains shared |
+| `rudp.protocol.ReceiveWindow` | `rudp.protocol.ReceiveWindow` | Kept; Selective Repeat semantics retained |
+| `rudp.udp` transfer path | `rudp.sender.send_file` and `rudp.receiver.receive_file` | Replacement implemented; old path retained temporarily |
+| `rudp.congestion.Rtt` | `rudp.congestion.Rtt` | Simplified to required estimator and bounds |
+| `rudp.congestion.Aimd` | `rudp.congestion.Aimd` | Simplified to required slow start/AIMD rules |
+| `rudp.common` control/security helpers | `rudp.sender`, `rudp.receiver`, `rudp.models` | Pending removal after compatibility tests |
+| `rudp.cli` | `rudp.__main__` send/recv commands | Removed; replacement CLI coverage passes |
+| `rudp.ui` | `app.py` | GUI replacement implemented; old terminal UI retained temporarily |
+| `FaultProxy` in integration tests | `rudp.channel.LossyChannel` | New real-socket fault tests added; old fixture retained temporarily |
+
+## Planned removals
+
+The old request/pull protocol, TCP comparison path, terminal menu, and security
+features specific to remote file requests will be removed only after replacement
+tests pass. Each removal will be one commit and added to this table with the
+reason.

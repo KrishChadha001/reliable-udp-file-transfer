@@ -16,6 +16,7 @@ This file records replacements before legacy code is removed.
 | `tools/validate_ubuntu.sh` | unittest and Python standard-library checks | Removed because validation is no longer Ubuntu-specific |
 | `tools/analyze.py` | CSV output from `tools/benchmark.py` | Removed; benchmark writes a direct, readable CSV |
 | `tools/plot_matplotlib.py` | `tools/plot_results.py` | Removed; optional matplotlib is isolated in the new plotter |
+| `tools/fixtures.py` | `tools/make_files.py` | Removed; deterministic file generation now has a focused tool |
 | `rudp.cli` | `rudp.__main__` send/recv commands | Removed; replacement CLI coverage passes |
 | `rudp.ui` | `app.py` | Removed; GUI replacement and transfer tests pass |
 | `FaultProxy` in integration tests | `rudp.channel.LossyChannel` | New real-socket fault tests added; old fixture retained temporarily |

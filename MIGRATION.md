@@ -13,6 +13,7 @@ This file records replacements before legacy code is removed.
 | `rudp.common` control/security helpers | `rudp.sender`, `rudp.receiver`, `rudp.models` | Removed; old request/security features are out of scope |
 | `run.sh` | README command examples | Removed because the project uses direct Python commands |
 | `tools/netem.sh` | `rudp.channel.LossyChannel` | Removed; portable in-process fault injection replaces Linux-only NetEm |
+| `tools/validate_ubuntu.sh` | unittest and Python standard-library checks | Removed because validation is no longer Ubuntu-specific |
 | `rudp.cli` | `rudp.__main__` send/recv commands | Removed; replacement CLI coverage passes |
 | `rudp.ui` | `app.py` | Removed; GUI replacement and transfer tests pass |
 | `FaultProxy` in integration tests | `rudp.channel.LossyChannel` | New real-socket fault tests added; old fixture retained temporarily |

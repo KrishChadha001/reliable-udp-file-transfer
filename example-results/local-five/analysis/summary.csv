@@ -1,3 +1,0 @@
-protocol,condition,file,runs,successes,failures,mean_elapsed_s,stdev_elapsed_s,mean_goodput_mbps,mean_retransmissions
-tcp,local-clean,1000000bytes.bin,5,5,0,0.024888600000122097,0.008579337948271273,350.28159308209604,
-udp,local-clean,1000000bytes.bin,5,5,0,0.08302400000029593,0.015738707106714617,99.940339528392,0.0

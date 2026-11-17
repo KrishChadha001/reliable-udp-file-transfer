@@ -1,200 +1,77 @@
-# Reliable UDP Transport Lab
+# Reliable UDP File Transfer
 
-**Python • Ubuntu VM • Selective Repeat • AIMD • SHA-256 • TCP comparison**
+This project demonstrates reliable file transfer over UDP using concepts from a
+standard Computer Networks course. Three students can explain the complete path:
+the sender hashes and segments a file, Selective Repeat retransmits individual
+packets, and the receiver verifies the reconstructed file before publishing it.
 
-Computer Networks Lab, 24BI15CS313, Odd Semester 2026, JIIT Sector 128.
-Team: **Vaibhav Khandelwal (992401030121), Vedika Uthra (992401030210), Krish Chadha (992401030196), batch F2.** Submitted to Mr. Janardan Kumar Verma.
-
-This project transfers actual files through UDP sockets. Reliability, ordering, duplicate handling, individual acknowledgements, per-packet retransmission timers and simplified congestion control are implemented in the application. It also includes a separate TCP baseline, an Ubuntu NetEm lab, automated experiments, CSV/JSON measurements and SVG graphs. The interface is a terminal dashboard, with an optional guided menu. Qt is deferred. The final language is Python, matching the synopsis.
-
-## Project status and demonstrated results
-
-**The core implementation and local demonstrations are ready. Ubuntu VM NetEm validation is the remaining step before final submission.** The Linux experiment tools and instructions are included; the results below were collected on Windows localhost and must not be described as Ubuntu NetEm results.
-
-| Check | Verified result |
-|---|---|
-| Automated tests | 33 tests: 32 passed, 1 Windows symlink-permission skip |
-| Actual UDP/TCP transfer | Binary and empty files verified with SHA-256 |
-| Fault recovery | Lost DATA/ACK/META/FIN, corruption, duplicates and reordering; four final ACKs lost |
-| Persistent sender | Repeated files and recovery after malformed requests |
-| 1/10/50 MB comparison | 30 successful measured transfers, five per protocol and file size |
-| Ubuntu NetEm study | Tools ready; execution and measured VM results still pending |
-
-The output images below are rendered from actual captured command output for readability, rather than invented terminal results. Graphs use the included measured CSV/trace data.
-
-### Automated test output
-
-![Actual test output: 33 tests, 32 passed and one platform skip](docs/images/test-output.png)
-
-[Raw captured test output](docs/evidence/test-output.txt) · [Validation details](docs/VALIDATION.md)
-
-### Verified UDP transfer
-
-![Actual UDP receiver output with verified file hash](docs/images/udp-transfer.png)
-
-[Raw captured UDP output](docs/evidence/udp-transfer.txt)
-
-<details>
-<summary>Show the TCP baseline transfer output</summary>
-
-![Actual TCP receiver output with verified file hash](docs/images/tcp-transfer.png)
-
-[Raw captured TCP output](docs/evidence/tcp-transfer.txt)
-
-</details>
-
-### Recovery under deliberately injected faults
-
-![Recorded UDP recovery result with retransmissions and matching SHA-256](docs/images/fault-recovery.png)
-
-This diagnostic uses real sockets and a deterministic fault proxy, **not NetEm**. [Raw receiver metrics](example-results/fault-demo/receiver.json) and [injected events](example-results/fault-demo/fault-events.json) are included.
-
-### Measured comparison across all three file sizes
-
-![Measured UDP and TCP useful throughput for 1, 10 and 50 MB on Windows localhost](docs/images/throughput.png)
-
-![Measured UDP and TCP completion times for 1, 10 and 50 MB on Windows localhost](docs/images/completion-time.png)
-
-Five repetitions per protocol and size; all 30 transfers succeeded. These are successful-run means on a virtual localhost path, not physical-link capacity measurements. [Raw runs](example-results/size-study/runs.csv) · [Summary statistics](example-results/size-study/analysis/summary.csv)
-
-<details>
-<summary>Show retransmission measurements for the clean local comparison</summary>
-
-![UDP retransmission means, with TCP counters explicitly unavailable](docs/images/retransmissions.png)
-
-The clean localhost size study observed zero UDP DATA retransmissions. TCP retransmissions are not measured by this application and remain N/A. The fault-recovery example above demonstrates retransmission behavior.
-
-</details>
-
-### Actual congestion-window trace
-
-![Measured AIMD congestion window with timeout events during the deterministic fault test](docs/images/congestion-window.png)
-
-[Raw sender trace](example-results/fault-demo/sender-trace.csv). This diagnostic trace is separate from the primary timing comparison, which disables packet-level logging.
-
-## Start here on Ubuntu
-
-Copy/extract this folder into your Ubuntu VM and open a terminal **inside this folder**. Ubuntu 22.04 or later with Python 3.10+ is recommended.
-
-```bash
-sudo apt update
-sudo apt install python3 iproute2
-python3 --version
-python3 tools/fixtures.py
-mkdir -p results
-```
-
-No third-party Python packages are required for transfers, tests, benchmarking or SVG graphs. `samples/` is generated locally, keeping the source download small. Fixtures use decimal MB: 1 MB = 1,000,000 bytes.
-
-Optional PNG report plots use matplotlib: install `python3-matplotlib` on Ubuntu, then run `python3 tools/plot_matplotlib.py <analysis/summary.csv> --output results/plots`. The SVG graphs work without it.
-
-In terminal 1:
-
-```bash
-python3 -m rudp serve --root samples --port 9000 \
-  --trace results/sender-trace.csv --metrics results/sender.json
-```
-
-In terminal 2, in the same project folder:
-
-```bash
-python3 -m rudp get --host 127.0.0.1 --port 9000 \
-  --file 1mb.bin --output received-1mb.bin --metrics results/receiver.json
-python3 -m rudp inspect received-1mb.bin
-sha256sum samples/1mb.bin received-1mb.bin
-```
-
-The destination is published only after exact-length and SHA-256 verification. Existing destinations are protected; choose a new output name or explicitly use `--force`. The output directory must already exist. Press Ctrl+C to stop a server. `--once` exits after one accepted request.
-
-## Terminal interface
+## Architecture
 
 ```text
-============================================================================
-  RELIABLE UDP  /  TRANSPORT LAB
-  RECEIVER  |  UDP
-============================================================================
- [############------------]  50.0%  0.48/0.95 MiB  ... Mb/s
-
-  VERIFIED  |  UDP  |  receiver
-  File                    1mb.bin
-  Bytes                   1000000
-  Elapsed                 <measured> s
-  Useful throughput       <measured> Mbit/s
-  DATA retransmissions    <measured count and percentage>
-  Final cwnd              <measured> packets
-  SRTT / RTO              <measured> / <measured> ms
-  Corrupt / duplicates    <measured> / <measured>
-  SHA-256                 <verified digest>
+  sender.py                         receiver.py
+  file -> META/DATA/FIN -> UDP -> META/DATA/FIN
+          ^        ACK/FIN_ACK <- UDP <-
+          |       LossyChannel (tests/demo)
+          +-- per-packet timers, CRC-32, SHA-256
 ```
 
-This is a format illustration, not experiment data. Interactive terminals get an in-place progress bar and optional color. `--verbose` displays packet events for teaching; it adds overhead and should be omitted during timed comparisons. `--plain` disables animation, `--no-color` disables colors, and the `NO_COLOR` environment variable is respected. Redirected output contains readable summaries without ANSI animation. Run `python3 -m rudp` in a terminal for the guided menu.
+The receiver listens first. The sender pushes one selected local file. The
+receiver stores only the basename from metadata and never overwrites an existing
+file. Packets from addresses other than the address learned from META are
+ignored.
 
-## TCP baseline
+## Install and run
 
-Use a second port or stop the UDP sender first:
+Python 3.10+ and the standard library are enough for transfers:
 
-```bash
-# Terminal 1
-python3 -m rudp serve --protocol tcp --root samples --port 9001
-# Terminal 2
-python3 -m rudp get --protocol tcp --port 9001 --file 1mb.bin --output received-tcp.bin
+```text
+python -m rudp recv --port 9000 --out received
+python -m rudp send --file samples/1mb.bin --host 127.0.0.1 --port 9000
 ```
 
-Both paths verify size/hash and measure request-to-verified-completion time. TCP DATA retransmissions are reported as **N/A**, because application-level writes do not reveal kernel retransmissions. A fair comparison uses identical files, endpoints, impairment conditions, window settings and logging settings. See [measurement definitions](docs/PROTOCOL.md).
+Useful options include `--window`, `--loss`, `--dup`, `--corrupt`, `--delay`,
+`--jitter`, `--seed`, `--verbose`, and `--trace trace.csv`.
 
-## Automated comparisons and graphs
+The optional GUI is separate:
 
-```bash
-# Quick validation: 4 real transfers, two small sizes, one repetition.
-python3 tools/benchmark.py --smoke --output results/smoke
-
-# Local baseline: both protocols, 1 MB, five repetitions each.
-python3 -m rudp benchmark --output results/local-five
-
-# Recreate graphs from measured CSV.
-python3 tools/analyze.py results/local-five/runs.csv --output results/local-five/analysis
+```text
+python app.py
 ```
 
-Every output directory must be new: existing `runs.csv` files are not replaced. Each run retains sender/client logs and metrics. Primary timed runs disable packet-level traces for a fair comparison; add `--diagnostic-traces` for a separate cwnd dataset labeled diagnostic. Large received copies are deleted after verification; source fixtures remain. Analysis exports `summary.csv`, throughput/time/retransmission SVGs and, when traces exist, per-trace cwnd SVGs. Open an SVG in Firefox or attach it to a report. Failed runs remain in CSV and failure counts; averages use only successful runs. A single successful run has no sample standard deviation.
+If Tkinter is missing on Debian/Ubuntu, install it with
+`sudo apt install python3-tk`.
 
-## Linux NetEm experiments
+## Selective Repeat in this project
 
-The helper creates two **isolated network namespaces** joined by a veth pair. It does not apply impairments to your VM's ordinary Wi-Fi, Ethernet or loopback interface. Both directions get the configured loss, delay, jitter, reordering and bandwidth limit. Thus ACK loss is included, and 25 ms one-way delay adds approximately 50 ms of network RTT.
+The sender may have at most `window` packets outstanding. Every DATA packet has
+its own deadline. An ACK confirms only its sequence number, and the sender
+advances the base only across contiguous acknowledged packets. A timeout resends
+only the expired packet. The receiver buffers packets above the base, re-ACKs
+duplicates below the base, and does not ACK packets beyond its window.
 
-```bash
-# A controlled condition: five runs per protocol, same 1 MB file.
-sudo python3 tools/benchmark.py --netem --loss 5 --delay 25 \
-  --jitter 5 --reorder 1 --rate 10mbit \
-  --repetitions 5 --sizes 1000000 --output results/netem-example
+The fixed header is 11 bytes: type (1), sequence number (4), payload length (2),
+and CRC-32 (4). DATA payloads are at most 1024 bytes. META contains JSON with
+`name`, `size`, `sha256`, `window`, and `chunk`.
 
-# Full planned parameter coverage: 1200 runs; allow substantial time and disk space.
-sudo python3 tools/benchmark.py --netem --full --output results/full-study
+## Demo and tests
+
+```text
+python tools/demo.py
+python -m unittest discover -s tests -v
+python tools/make_files.py samples/generated.bin 100000
+python tools/benchmark.py --simple --repeats 1 --output results/benchmark.csv
 ```
 
-The full matrix uses 0/1/5/10% loss, 0/25/50 ms one-way delay, unlimited/10 Mbit/s links, and jitter/reordering both off and on where delay is positive. It uses 1/10/50 MB files, UDP/TCP, and five repetitions. A 600-second per-run wall limit is the default; change `--run-timeout` explicitly if needed. All failures are reported rather than hidden. Running helpers with sudo can create root-owned result files; use a user-writable copy for report editing.
+The demo uses a real loopback transfer with 5% simulated loss. It reports the
+actual result; no benchmark values are included in this repository.
 
-The runner records platform/Python versions, arguments, exact conditions, repetitions and qdisc snapshots. **Local proxy tests are fault-injection tests, not NetEm measurements.** Ubuntu-specific checks still need to be run in your VM; see [validation notes](docs/VALIDATION.md).
+## Limitations
 
-For manual NetEm, packet capture and cleanup, see [the demo guide](docs/DEMO.md). If a run is forcibly killed, inspect the lab and clean it with `sudo bash tools/netem.sh down`; this helper only removes its owned lab. No GUI is required inside the VM.
+- This is a teaching implementation, not a replacement for TCP.
+- Localhost measurements include Python, operating-system, and scheduling
+  overhead and make no TCP-fairness claims.
+- The receiver handles one transfer at a time and has no authentication.
+- The optional fault channel is for tests and demonstrations, not a production
+  network service.
 
-## Run the tests
-
-```bash
-python3 -m unittest discover -s tests -v
-```
-
-Tests use real localhost sockets and a deterministic UDP fault proxy. They exercise malformed/corrupt packets, receive-window boundaries, duplicates, RTT estimation, Karn's rule, AIMD recovery grouping, binary/empty files, dropped META/DATA/ACK/FIN packets, corruption/reordering, missing files, output protection, unavailable peers, CSV aggregation, and a real benchmark smoke run. Symlink tests may be skipped on Windows where symlink creation is restricted.
-
-## Reading guide for three students
-
-| Student | Main code to explain | Concepts |
-|---|---|---|
-| Vaibhav | `rudp/protocol.py`, sender half of `rudp/udp.py` | Header/CRC, sequence numbers, sender window, per-packet timers, selective retransmission |
-| Vedika | `ReceiveWindow`, receiver half of `rudp/udp.py`, `rudp/congestion.py` | Buffering/ordering, duplicate ACKs, AIMD, RTT/RTO, trace logging |
-| Krish | `rudp/tcp.py`, `tools/netem.sh`, `tools/benchmark.py`, `tools/analyze.py` | NetEm, reproducibility, TCP framing, comparison tables/graphs, interpretation |
-
-Read [architecture](docs/ARCHITECTURE.md), [wire protocol](docs/PROTOCOL.md), [team walkthrough and viva](docs/TEAM_AND_VIVA.md), [demo](docs/DEMO.md), [report](docs/REPORT.md), and [synopsis coverage](docs/REQUIREMENTS.md). Everyone should understand the complete flow, even when presenting separate modules.
-
-## Boundaries
-
-This is a one-to-one teaching protocol. It has no encryption, authentication, NAT traversal, resume, simultaneous-client service, slow start, fast retransmit/recovery, or production hardening. CRC/SHA detect damage; they do not authenticate a malicious peer. IPv4 is supported. Only safe basename requests for non-symlink regular files are accepted. Transfer memory is bounded by the configured window, not the whole file. Ctrl+C removes incomplete temporary outputs; a hard kill/power failure may leave a `.part.*` file, which is never treated as a verified destination. The simplified RTO limits are chosen for lab responsiveness and do not claim complete RFC 6298 compliance.
+TODO: add screenshot from a real GUI run.
